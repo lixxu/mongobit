@@ -3,4 +3,4 @@
 
 from .base import Model
 from .fields import fields
-from .mongoset import MongoSet
+from .mongobit import MongoBit

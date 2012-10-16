@@ -1,0 +1,152 @@
+#!/usr/bin/env python
+#-*- coding: utf-8 -*-
+
+from pymongo import Connection
+from bson.objectid import ObjectId
+from utils import get_sort
+
+
+class MongoBit(object):
+    conn = {}
+    db = {}
+
+    def __init__(self, config={}):
+        if config:
+            self.initialize(config)
+
+    def initialize(self, config):
+        self.connect(config)
+
+    def connect(self, config={}):
+        host = config.get('DB_HOST', 'localhost')
+        port = config.get('DB_PORT', 27017)
+        assert 'DB_NAME' in config
+        database = config['DB_NAME']
+        conn = Connection(host, port)
+        db = conn[database]
+        is_auth = config.get('DB_AUTH', False)
+        if is_auth:
+            user = config.get('DB_USER')
+            passwd = config.get('DB_PASS')
+            db.authenticate(user, passwd)
+
+        self.alias = config.get('alias', 'default')
+        MongoBit.conn[self.alias] = conn
+        MongoBit.db[self.alias] = db
+
+    @property
+    def database(self):
+        return MongoBit.db[self.alias]
+
+    @property
+    def connection(self):
+        return MongoBit.conn[self.alias]
+
+    def close(self):
+        self.connection.disconnect()
+        MongoBit.conn.pop(self.alias)
+        MongoBit.db.pop(self.alias)
+
+    @classmethod
+    def get_total_count(cls, alias, model):
+        return MongoBit.db[alias][model.coll_name].count()
+
+    @classmethod
+    def get_count(cls, alias, model, spec=None):
+        return MongoBit.db[alias][model.coll_name].find(spec,
+                                                        fields=['_id']).count()
+
+    @classmethod
+    def distinct(cls, alias, model, field):
+        return MongoBit.db[alias][model.coll_name].distinct(field)
+
+    @classmethod
+    def find_one(cls, alias, model, id=None, **kwargs):
+        if 'spec' in kwargs:
+            spec = kwargs['spec']
+        else:
+            if isinstance(id, basestring):
+                try:
+                    id = ObjectId(id)
+                except InvalidId:
+                    return None
+
+            spec = dict(_id=id)
+
+        fields = kwargs.get('fields')
+        sort = get_sort(kwargs.get('sort'))
+        skip = kwargs.get('skip', 0)
+        doc = MongoBit.db[alias][model.coll_name].find_one(spec,
+                                                           fields=fields,
+                                                           sort=sort,
+                                                           skip=skip,
+                                                           )
+
+        return model(**doc) if doc else None
+
+    @classmethod
+    def find(cls, alias, model, **kwargs):
+        obj = cls()
+        obj.alias = alias
+        obj.__model = model
+        spec = kwargs.get('spec') or None
+        fields = kwargs.get('fields') or None
+        sort = get_sort(kwargs.get('sort'))
+        limit = kwargs.get('limit', 0)
+        skip = kwargs.get('skip', 0)
+        obj.__cursor = MongoBit.db[alias][model.coll_name].find(spec,
+                                                                fields=fields,
+                                                                sort=sort,
+                                                                limit=limit,
+                                                                skip=skip,
+                                                                )
+        obj.__count = obj.__cursor.count()
+        return obj
+
+    @classmethod
+    def insert(cls, alias, model, doc, safe=True):
+        MongoBit.db[alias][model.coll_name].insert(doc, safe=safe)
+
+    @classmethod
+    def save(cls, alias, model, doc, safe=True):
+        MongoBit.db[alias][model.coll_name].save(doc, safe=safe)
+
+    @classmethod
+    def update(cls, alias, model, doc, diff_doc={}, safe=True):
+        if diff_doc:
+            MongoBit.db[alias][model.coll_name].update(dict(_id=doc['_id']),
+                                                       {'$set': diff_doc},
+                                                       safe=safe,
+                                                       )
+
+        else:
+            cls.save(alias, model, doc, safe=safe)
+
+    @classmethod
+    def remove(cls, alias, model, doc, safe=True):
+        MongoBit.db[alias][model.coll_name].remove(doc['_id'], safe=safe)
+
+    def __iter__(self):
+        return self
+
+    def next(self):
+        if self.count < 1:
+            raise StopIteration
+
+        self.__count -= 1
+        return self.model(**self.cursor.next())
+
+    def create_index(self, alias, model, index):
+        MongoBit.db[alias][model.coll_name].ensure_index(index)
+
+    @property
+    def model(self):
+        return self.__model
+
+    @property
+    def count(self):
+        return self.__count
+
+    @property
+    def cursor(self):
+        return self.__cursor

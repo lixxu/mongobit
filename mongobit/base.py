@@ -196,7 +196,29 @@ class Model(dict):
             t = None
 
         page = kwargs.get('page', int(request.args.get('page', 1)))
-        per_page = kwargs.get('per_page', session.get('per_page', 10))
+        if 'per_page' in kwargs:
+            per_page = kwargs['per_page']
+        elif 'per_page' in session:
+            per_page = session['per_page']
+        elif 'PER_PAGE' in current_app.config:
+            per_page = current_app.config['PER_PAGE']
+        else:
+            per_page = 10
+
+        if 'link_size' in kwargs:
+            link_size = kwargs['link_size']
+        elif 'LINK_SIZE' in current_app.config:
+            link_size = current_app.config['LINK_SIZE']
+        else:
+            link_size = ''
+
+        if 'link_align' in kwargs:
+            alignment = kwargs['link_align']
+        elif 'LINK_ALIGN' in current_app.config:
+            alignment = current_app.config['LINK_ALIGN']
+        else:
+            alignment = ''
+
         skip = (page - 1) * per_page
         kwargs.update(limit=per_page, skip=skip)
         objs = MongoBit.find(cls._db_alias, cls, **kwargs)
@@ -217,6 +239,8 @@ class Model(dict):
                     total=total,
                     display_msg=kwargs.get('display_msg'),
                     search_msg=kwargs.get('search_msg'),
+                    link_size=link_size,
+                    alignment=alignment,
                     )
         if t:
             for k in ('display_msg', 'search_msg', 'prev_label', 'next_label'):

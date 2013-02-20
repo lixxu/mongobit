@@ -48,7 +48,7 @@ class ModelMeta(type):
             for k, v in attrs['_db_fields'].iteritems():
                 if 'unique' in v.validators:
                     uk = v.validators['unique']
-                    if uk is True:
+                    if uk is True or uk is False:
                         ukey = k
                     else:
                         ukey = uk
@@ -156,7 +156,7 @@ class Model(dict):
                               safe=safe,
                               )
 
-    def remove(self, safe=True):
+    def _remove(self, safe=True):
         MongoBit.remove(self.__class__._db_alias,
                         self.__class__,
                         self,
@@ -164,7 +164,10 @@ class Model(dict):
                         )
 
     def destroy(self, safe=True):
-        self.remove(safe=safe)
+        self._remove(safe=safe)
+
+    def remove(self, safe=True):
+        self.destroy(safe=safe)
 
     @classmethod
     def total_count(cls):

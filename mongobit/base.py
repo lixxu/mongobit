@@ -242,6 +242,7 @@ class Model(dict):
                     total=total,
                     display_msg=kwargs.get('display_msg'),
                     search_msg=kwargs.get('search_msg'),
+                    record_name=kwargs.get('record_name', 'records'),
                     link_size=link_size,
                     alignment=alignment,
                     )

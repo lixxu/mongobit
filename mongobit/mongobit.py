@@ -3,6 +3,7 @@
 
 from pymongo import Connection
 from bson.objectid import ObjectId
+from bson.errors import InvalidId
 from utils import get_sort
 
 

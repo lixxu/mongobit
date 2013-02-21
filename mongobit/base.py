@@ -242,12 +242,13 @@ class Model(dict):
                     total=total,
                     display_msg=kwargs.get('display_msg'),
                     search_msg=kwargs.get('search_msg'),
-                    record_name=kwargs.get('record_name', 'records'),
+                    record_name=kwargs.get('record_name'),
                     link_size=link_size,
                     alignment=alignment,
                     )
         if t:
-            for k in ('display_msg', 'search_msg', 'prev_label', 'next_label'):
+            for k in ('display_msg', 'search_msg', 'prev_label', 'next_label',
+                      'record_name'):
                 if not args[k]:
                     args[k] = t(k)
 

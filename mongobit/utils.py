@@ -9,7 +9,12 @@ def get_value(v, cs=False):
     '''cs: case sensitive'''
     if v:
         if cs is False:
-            return re.compile(ur'^{0}$'.format(re.escape(v)), re.I)
+            if isinstance(v, basestring):
+                vv = re.escape(v)
+            else:
+                vv = v
+
+            return re.compile(ur'^{0}$'.format(vv), re.I)
 
         return v
 

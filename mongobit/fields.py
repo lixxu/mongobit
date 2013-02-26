@@ -83,10 +83,12 @@ class BaseField(object):
         elif self.validators.get('null', False) and value is None:
             obj.__dict__[self.name] = None
         else:
-            tp = basestring if self.type in (str, unicode) else self.type
-            if self.type in (int, ):
-                if isinstance(value, long):
-                    value = int(value)
+            if self.type in (str, unicode):
+                tp = basestring
+            elif self.type in (int, long):
+                tp = (int, long)
+            else:
+                tp = self.type
 
             if not isinstance(value, tp):
                 errors.append("not {0!r} type".format(self.type))

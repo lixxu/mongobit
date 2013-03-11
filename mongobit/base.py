@@ -198,7 +198,8 @@ class Model(dict):
         else:
             t = None
 
-        page = kwargs.get('page', int(request.args.get('page', 1)))
+        args = dict(request.args.to_dict().items() + request.view_args.items())
+        page = kwargs.get('page', int(args.get('page', 1)))
         if 'per_page' in kwargs:
             per_page = kwargs['per_page']
         elif 'per_page' in session:

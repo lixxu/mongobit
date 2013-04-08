@@ -137,8 +137,9 @@ class MongoBit(object):
         self.__count -= 1
         return self.model(**self.cursor.next())
 
-    def create_index(self, alias, model, index):
-        MongoBit.db[alias][model.coll_name].ensure_index(index)
+    def create_index(self, alias, model, index, background=True):
+        MongoBit.db[alias][model.coll_name].ensure_index(index,
+                                                         background=background)
 
     @property
     def model(self):

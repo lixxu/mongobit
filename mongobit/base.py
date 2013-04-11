@@ -1,11 +1,9 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
 
+from __future__ import unicode_literals
 from time import strftime
-from pymongo import ASCENDING as ASC, DESCENDING as DESC
-from pymongo.errors import OperationFailure
 from bson.objectid import ObjectId
-from bson.errors import InvalidId
 
 from fields import fields, BaseField
 from utils import get_spec, get_sort
@@ -129,45 +127,119 @@ class Model(dict):
 
         return dict((k, getattr(self, k)) for k in cls._db_fields)
 
-    def save(self, doc={}, safe=True, skip=False, update_ts=None):
+    def get_update_doc(self, **kwargs):
+        set_doc = kwargs.pop('set_doc', None)
+        unset_doc = kwargs.pop('unset_doc', None)
+        push_doc = kwargs.pop('push_doc', None)
+        pull_doc = kwargs.pop('pull_doc', None)
+        pull_all_doc = kwargs.pop('pull_all_doc', None)
+        pop_doc = kwargs.pop('pop_doc', None)
+        inc_doc = kwargs.pop('inc_doc', None)
+        ats_doc = kwargs.pop('add_to_set_doc', None)
+        if not ats_doc:
+            ats_doc = kwargs.pop('addToSet', None)
+
+        up_doc = dict()
+        if set_doc:
+            fields = self.__class__._db_fields
+            for k in set_doc.keys():
+                if k in fields and set_doc[k] == getattr(self, k):
+                    set_doc.pop(k)
+
+            if set_doc:
+                up_doc['$set'] = set_doc
+
+        if unset_doc:
+            up_doc['$unset'] = unset_doc
+
+        if push_doc:
+            up_doc['$push'] = push_doc
+
+        if pull_doc:
+            up_doc['$pull'] = pull_doc
+
+        if pull_all_doc:
+            up_doc['$pullAll'] = pull_all_doc
+
+        if pop_doc:
+            up_doc['$pop'] = pop_doc
+
+        if inc_doc:
+            up_doc['$inc'] = inc_doc
+
+        if ats_doc:
+            up_doc['$addToSet'] = ats_doc
+
+        return up_doc
+
+    def pre_action(self, **kwargs):
+        skip = kwargs.pop('skip', False)
+        update_ts = kwargs.pop('update_ts', True)
         if skip is True:
             self._errors = {}
         else:
             self.validate()
 
-        if update_ts or 'updated_at' in self.__class__._db_fields:
-            if doc:
-                doc.update(updated_at=strftime(time_fmt))
-            else:
+        return skip, update_ts, self.is_valid
+
+    def insert_doc(self, **kwargs):
+        kwargs.setdefault('w', 1)
+        skip, update_ts, is_valid = self.pre_action(**kwargs)
+        if not is_valid:
+            return
+
+        if 'updated_at' in self.__class__._db_fields:
+            if update_ts is not False:
                 self.update(updated_at=strftime(time_fmt))
 
-        if self.is_valid:
-            if doc:
-                MongoBit.update(self.__class__._db_alias,
-                                self.__class__,
-                                self.get_clear_fields(),
-                                self.get_clear_fields(doc),
-                                safe=safe,
-                                )
-            else:
-                MongoBit.save(self.__class__._db_alias,
-                              self.__class__,
-                              self.get_clear_fields(),
-                              safe=safe,
-                              )
+        return MongoBit.insert(alias=self.__class__._db_alias,
+                               model=self.__class__,
+                               doc=self.get_clear_fields(),
+                               **kwargs
+                               )
 
-    def _remove(self, safe=True):
-        MongoBit.remove(self.__class__._db_alias,
-                        self.__class__,
-                        self,
-                        safe=safe,
-                        )
+    def save_doc(self, **kwargs):
+        return self.insert_doc(**kwargs)
 
-    def destroy(self, safe=True):
-        self._remove(safe=safe)
+    def update_doc(self, **kwargs):
+        kwargs.setdefault('w', 1)
+        skip, update_ts, is_valid = self.pre_action(**kwargs)
+        if not is_valid:
+            return
 
-    def remove(self, safe=True):
-        self.destroy(safe=safe)
+        up_doc = self.get_update_doc(**kwargs)
+        if up_doc:
+            if 'updated_at' in self.__class__._db_fields:
+                if update_ts is not False:
+                    if '$set' not in up_doc:
+                        up_doc['$set'] = dict(updated_at=strftime(time_fmt))
+                    else:
+                        up_doc['$set'].update(updated_at=strftime(time_fmt))
+
+            return MongoBit.update(alias=self.__class__._db_alias,
+                                   model=self.__class__,
+                                   spec=dict(_id=self.id),
+                                   up_doc=up_doc,
+                                   **kwargs
+                                   )
+
+    def save(self, **kwargs):
+        if self._is_new:
+            return self.save_doc(**kwargs)
+
+        return self.update_doc(**kwargs)
+
+    def destroy(self, **kwargs):
+        kwargs.setdefault('w', 1)
+        self.remove(**kwargs)
+
+    def remove(self, **kwargs):
+        kwargs.setdefault('w', 1)
+        return MongoBit.remove(alias=self.__class__._db_alias,
+                               model=self.__class__,
+                               spec=dict(_id=self.id),
+                               **kwargs
+                               )
 
     @classmethod
     def total_count(cls):

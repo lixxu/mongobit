@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
 
+from __future__ import unicode_literals
+import warnings
 import re
 from pymongo import ASCENDING as ASC, DESCENDING as DESC
 
@@ -59,3 +61,9 @@ def get_sort(sort):
             lsts.append(lst)
 
     return lsts[0] if len(lsts) == 1 else lsts
+
+
+def safe_deprecation(kwargs):
+    if 'safe' in kwargs:
+        warnings.warn('safe is deprecated, please use w instead',
+                      DeprecationWarning)

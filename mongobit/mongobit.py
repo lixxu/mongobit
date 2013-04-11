@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
 
-from pymongo import Connection
+from pymongo import MongoClient
 from bson.objectid import ObjectId
 from bson.errors import InvalidId
 from utils import get_sort
@@ -23,7 +23,7 @@ class MongoBit(object):
         port = config.get('DB_PORT', 27017)
         assert 'DB_NAME' in config
         database = config['DB_NAME']
-        conn = Connection(host, port)
+        conn = MongoClient(host, port)
         db = conn[database]
         is_auth = config.get('DB_AUTH', False)
         if is_auth:
@@ -105,27 +105,27 @@ class MongoBit(object):
         return obj
 
     @classmethod
-    def insert(cls, alias, model, doc, safe=True):
-        MongoBit.db[alias][model.coll_name].insert(doc, safe=safe)
+    def insert(cls, alias, model, doc, **kwargs):
+        kwargs.setdefault('w', 1)
+        return MongoBit.db[alias][model.coll_name].insert(doc, **kwargs)
 
     @classmethod
-    def save(cls, alias, model, doc, safe=True):
-        MongoBit.db[alias][model.coll_name].save(doc, safe=safe)
+    def save(cls, alias, model, doc, **kwargs):
+        kwargs.setdefault('w', 1)
+        return MongoBit.db[alias][model.coll_name].save(doc, **kwargs)
 
     @classmethod
-    def update(cls, alias, model, doc, diff_doc={}, safe=True):
-        if diff_doc:
-            MongoBit.db[alias][model.coll_name].update(dict(_id=doc['_id']),
-                                                       {'$set': diff_doc},
-                                                       safe=safe,
-                                                       )
-
-        else:
-            cls.save(alias, model, doc, safe=safe)
+    def update(cls, alias, model, spec, up_doc, **kwargs):
+        kwargs.setdefault('w', 1)
+        return MongoBit.db[alias][model.coll_name].update(spec,
+                                                          up_doc,
+                                                          **kwargs
+                                                          )
 
     @classmethod
-    def remove(cls, alias, model, doc, safe=True):
-        MongoBit.db[alias][model.coll_name].remove(doc['_id'], safe=safe)
+    def remove(cls, alias, model, spec, **kwargs):
+        kwargs.setdefault('w', 1)
+        return MongoBit.db[alias][model.coll_name].remove(spec, **kwargs)
 
     def __iter__(self):
         return self

@@ -109,6 +109,11 @@ class Model(dict):
     def __str__(self):
         return unicode(self.dict)
 
+    def __repr__(self):
+        kls = self.__class__
+        return '<{}.{} object ad {}>'.format(kls.__module__, kls.__name__,
+                                             id(self))
+
     def safe_get(self, k, default=None):
         return self.get(k, default)
 

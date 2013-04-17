@@ -58,7 +58,10 @@ class MongoBit(object):
                                                         fields=['_id']).count()
 
     @classmethod
-    def distinct(cls, alias, model, field):
+    def distinct(cls, alias, model, field, spec=None):
+        if spec:
+            return MongoBit.db[alias][model.coll_name].distinct(field, spec)
+
         return MongoBit.db[alias][model.coll_name].distinct(field)
 
     @classmethod

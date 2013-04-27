@@ -255,8 +255,8 @@ class Model(dict):
         return MongoBit.get_count(cls._db_alias, cls, spec)
 
     @classmethod
-    def distinct(cls, field):
-        return MongoBit.distinct(cls._db_alias, cls, field)
+    def distinct(cls, field, spec=None):
+        return MongoBit.distinct(cls._db_alias, cls, field, spec=spec)
 
     @classmethod
     def find_one(cls, id=None, **kwargs):

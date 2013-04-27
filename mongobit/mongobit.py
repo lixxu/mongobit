@@ -59,10 +59,11 @@ class MongoBit(object):
 
     @classmethod
     def distinct(cls, alias, model, field, spec=None):
+        collection = MongoBit.db[alias][model.coll_name]
         if spec:
-            return MongoBit.db[alias][model.coll_name].distinct(field, spec)
+            return collection.find(spec, fields=[field]).distinct(field)
 
-        return MongoBit.db[alias][model.coll_name].distinct(field)
+        return collection.distinct(field)
 
     @classmethod
     def find_one(cls, alias, model, id=None, **kwargs):

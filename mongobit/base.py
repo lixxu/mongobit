@@ -22,11 +22,13 @@ class ModelMeta(type):
             if '_id' not in attrs:
                 attrs.update(_id=fields.objectid())
 
-            if 'created_at' not in attrs:
-                attrs.update(created_at=fields.str())
 
-            if attrs.get('use_ts', True) and 'updated_at' not in attrs:
-                attrs.update(updated_at=fields.str())
+            if attrs.get('use_ts', True):
+                if 'created_at' not in attrs:
+                    attrs.update(created_at=fields.str())
+
+                if 'updated_at' not in attrs:
+                    attrs.update(updated_at=fields.str())
 
             attrs.update(_db_fields=dict())
             for k, v in attrs.iteritems():
@@ -78,7 +80,9 @@ class Model(dict):
         if '_id' not in kwargs:
             self._is_new = True
             self._id = ObjectId()
-            self.created_at = strftime(time_fmt)
+            if hasattr(self, 'created_at'):
+                self.created_at = strftime(time_fmt)
+
         else:
             self._is_new = False
 

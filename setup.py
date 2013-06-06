@@ -8,7 +8,7 @@ from setuptools import setup
 
 setup(
     name='MongoBit',
-    version='0.2.4',
+    version='0.2.5',
     url='https://github.com/lixxu/mongobit',
     license='BSD',
     author='Lix Xu',

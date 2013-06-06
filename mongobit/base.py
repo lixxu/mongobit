@@ -150,13 +150,14 @@ class Model(dict):
 
         up_doc = dict()
         if set_doc:
+            _set_doc = set_doc.copy()
             fields = self.__class__._db_fields
-            for k in set_doc.keys():
-                if k in fields and set_doc[k] == getattr(self, k):
-                    set_doc.pop(k)
+            for k in _set_doc.keys():
+                if k in fields and _set_doc[k] == getattr(self, k):
+                    _set_doc.pop(k)
 
-            if set_doc:
-                up_doc['$set'] = set_doc
+            if _set_doc:
+                up_doc['$set'] = _set_doc
 
         if unset_doc:
             up_doc['$unset'] = unset_doc

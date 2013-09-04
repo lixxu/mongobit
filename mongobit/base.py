@@ -22,7 +22,6 @@ class ModelMeta(type):
             if '_id' not in attrs:
                 attrs.update(_id=fields.objectid())
 
-
             if attrs.get('use_ts', True):
                 if 'created_at' not in attrs:
                     attrs.update(created_at=fields.str())
@@ -37,10 +36,9 @@ class ModelMeta(type):
                     v.name = k
 
             # generates the unique fields
-            attrs.update(_unique_fields=list(),
-                         _index_fields=list(),
-                         )
-            attrs['_index_fields'].append(get_sort('created_at'))
+            attrs.update(_unique_fields=list(), _index_fields=list())
+            if 'created_at' in attrs:
+                attrs['_index_fields'].append(get_sort('created_at'))
 
             if 'updated_at' in attrs:
                 attrs['_index_fields'].append(get_sort('updated_at desc'))
@@ -115,7 +113,7 @@ class Model(dict):
 
     def __repr__(self):
         kls = self.__class__
-        return '<{}.{} object ad {}>'.format(kls.__module__, kls.__name__,
+        return '<{}.{} object at {}>'.format(kls.__module__, kls.__name__,
                                              id(self))
 
     def safe_get(self, k, default=None):

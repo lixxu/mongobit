@@ -282,8 +282,6 @@ class Model(dict):
         page = kwargs.get('page', int(args.get('page', 1)))
         if 'per_page' in kwargs:
             per_page = kwargs['per_page']
-        elif 'per_page' in session:
-            per_page = session['per_page']
         elif 'PER_PAGE' in current_app.config:
             per_page = current_app.config['PER_PAGE']
         else:
@@ -302,6 +300,9 @@ class Model(dict):
             alignment = current_app.config['LINK_ALIGN']
         else:
             alignment = ''
+
+        bs_version = kwargs.get('bs_version') or \
+                    current_app.config.get('BS_VERSION') or 2
 
         skip = (page - 1) * per_page
         kwargs.update(limit=per_page, skip=skip)
@@ -326,6 +327,7 @@ class Model(dict):
                     record_name=kwargs.get('record_name'),
                     link_size=link_size,
                     alignment=alignment,
+                    version=bs_version,
                     )
         if t:
             for k in ('display_msg', 'search_msg', 'prev_label', 'next_label',

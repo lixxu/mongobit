@@ -327,7 +327,7 @@ class Model(dict):
                     record_name=kwargs.get('record_name'),
                     link_size=link_size,
                     alignment=alignment,
-                    version=bs_version,
+                    bs_version=bs_version,
                     )
         if t:
             for k in ('display_msg', 'search_msg', 'prev_label', 'next_label',

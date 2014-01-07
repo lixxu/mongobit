@@ -271,7 +271,7 @@ class Model(dict):
         if paginate is False:
             return MongoBit.find(cls._db_alias, cls, **kwargs)
 
-        from flask import session, request, current_app
+        from flask import request, current_app
         from flask.ext.paginate import Pagination
         if hasattr(current_app, 'y18n'):
             t = current_app.y18n.t
@@ -303,6 +303,8 @@ class Model(dict):
 
         bs_version = kwargs.get('bs_version') or \
                     current_app.config.get('BS_VERSION') or 2
+        css_framework = kwargs.get('css_framework') or \
+                    current_app.config.get('CSS_FRAMEWORK') or 'bootstrap'
 
         skip = (page - 1) * per_page
         kwargs.update(limit=per_page, skip=skip)
@@ -328,6 +330,7 @@ class Model(dict):
                     link_size=link_size,
                     alignment=alignment,
                     bs_version=bs_version,
+                    css_framework=css_framework,
                     )
         if t:
             for k in ('display_msg', 'search_msg', 'prev_label', 'next_label',

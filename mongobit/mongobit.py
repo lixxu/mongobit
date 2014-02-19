@@ -99,12 +99,22 @@ class MongoBit(object):
         sort = get_sort(kwargs.get('sort'))
         limit = kwargs.get('limit', 0)
         skip = kwargs.get('skip', 0)
-        obj.__cursor = MongoBit.db[alias][model.coll_name].find(spec,
-                                                                fields=fields,
-                                                                sort=sort,
-                                                                limit=limit,
-                                                                skip=skip,
-                                                                )
+        hint = kwargs.get('hint')
+        if hint:
+            obj.__cursor = MongoBit.db[alias][model.coll_name].find(spec,
+                fields=fields,
+                sort=sort,
+                limit=limit,
+                skip=skip,
+                ).hint(hint)
+        else:
+            obj.__cursor = MongoBit.db[alias][model.coll_name].find(spec,
+                fields=fields,
+                sort=sort,
+                limit=limit,
+                skip=skip,
+                )
+
         obj.__count = obj.__cursor.count()
         return obj
 

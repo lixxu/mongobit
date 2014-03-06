@@ -211,11 +211,14 @@ class Model(dict):
 
     def update_doc(self, **kwargs):
         kwargs.setdefault('w', 1)
+        up_doc = self.get_update_doc(**kwargs)
+        if '$set' in up_doc:
+            self.update(up_doc['$set'])
+
         skip, update_ts, is_valid = self.pre_action(**kwargs)
         if not is_valid:
             return
 
-        up_doc = self.get_update_doc(**kwargs)
         if up_doc:
             if 'updated_at' in self.__class__._db_fields:
                 if update_ts is not False:

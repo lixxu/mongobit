@@ -281,8 +281,10 @@ class Model(dict):
         else:
             t = None
 
-        args = dict(request.args.to_dict().items() + request.view_args.items())
-        page = kwargs.get('page', int(args.get('page', 1)))
+        page1 = int(kwargs.get('page', 1))
+        page2 = int(request.view_args.get('page', 1))
+        page3 = int(request.args.get('page', 1))
+        page = max((page1, page2, page3))
         if 'per_page' in kwargs:
             per_page = kwargs['per_page']
         elif 'PER_PAGE' in current_app.config:
@@ -305,9 +307,9 @@ class Model(dict):
             alignment = ''
 
         bs_version = kwargs.get('bs_version') or \
-                    current_app.config.get('BS_VERSION') or 2
+            current_app.config.get('BS_VERSION') or 2
         css_framework = kwargs.get('css_framework') or \
-                    current_app.config.get('CSS_FRAMEWORK') or 'bootstrap'
+            current_app.config.get('CSS_FRAMEWORK') or 'bootstrap'
 
         skip = (page - 1) * per_page
         kwargs.update(limit=per_page, skip=skip)

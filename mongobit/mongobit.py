@@ -48,18 +48,22 @@ class MongoBit(object):
         MongoBit.conn.pop(self.alias)
         MongoBit.db.pop(self.alias)
 
+    @staticmethod
+    def _get_coll(alias, model):
+        return MongoBit.db[alias][model.coll_name]
+
     @classmethod
     def get_total_count(cls, alias, model):
-        return MongoBit.db[alias][model.coll_name].count()
+        return MongoBit._get_coll(alias, model).count()
 
     @classmethod
     def get_count(cls, alias, model, spec=None):
-        return MongoBit.db[alias][model.coll_name].find(spec,
-                                                        fields=['_id']).count()
+        return MongoBit._get_coll(alias, model).find(spec,
+                                                     fields=['_id']).count()
 
     @classmethod
     def distinct(cls, alias, model, field, spec=None):
-        collection = MongoBit.db[alias][model.coll_name]
+        collection = MongoBit._get_coll(alias, model)
         if spec:
             return collection.find(spec, fields=[field]).distinct(field)
 
@@ -81,11 +85,11 @@ class MongoBit(object):
         fields = kwargs.get('fields')
         sort = get_sort(kwargs.get('sort'))
         skip = kwargs.get('skip', 0)
-        doc = MongoBit.db[alias][model.coll_name].find_one(spec,
-                                                           fields=fields,
-                                                           sort=sort,
-                                                           skip=skip,
-                                                           )
+        doc = MongoBit._get_coll(alias, model).find_one(spec,
+                                                        fields=fields,
+                                                        sort=sort,
+                                                        skip=skip,
+                                                        )
 
         return model(**doc) if doc else None
 
@@ -100,20 +104,21 @@ class MongoBit(object):
         limit = kwargs.get('limit', 0)
         skip = kwargs.get('skip', 0)
         hint = kwargs.get('hint')
+        coll_ = MongoBit._get_coll(alias, model)
         if hint:
-            obj.__cursor = MongoBit.db[alias][model.coll_name].find(spec,
-                fields=fields,
-                sort=sort,
-                limit=limit,
-                skip=skip,
-                ).hint(hint)
+            obj.__cursor = coll_.find(spec,
+                                      fields=fields,
+                                      sort=sort,
+                                      limit=limit,
+                                      skip=skip,
+                                      ).hint(hint)
         else:
-            obj.__cursor = MongoBit.db[alias][model.coll_name].find(spec,
-                fields=fields,
-                sort=sort,
-                limit=limit,
-                skip=skip,
-                )
+            obj.__cursor = coll_.find(spec,
+                                      fields=fields,
+                                      sort=sort,
+                                      limit=limit,
+                                      skip=skip,
+                                      )
 
         obj.__count = obj.__cursor.count()
         return obj
@@ -121,25 +126,22 @@ class MongoBit(object):
     @classmethod
     def insert(cls, alias, model, doc, **kwargs):
         kwargs.setdefault('w', 1)
-        return MongoBit.db[alias][model.coll_name].insert(doc, **kwargs)
+        return MongoBit._get_coll(alias, model).insert(doc, **kwargs)
 
     @classmethod
     def save(cls, alias, model, doc, **kwargs):
         kwargs.setdefault('w', 1)
-        return MongoBit.db[alias][model.coll_name].save(doc, **kwargs)
+        return MongoBit._get_coll(alias, model).save(doc, **kwargs)
 
     @classmethod
     def update(cls, alias, model, spec, up_doc, **kwargs):
         kwargs.setdefault('w', 1)
-        return MongoBit.db[alias][model.coll_name].update(spec,
-                                                          up_doc,
-                                                          **kwargs
-                                                          )
+        return MongoBit._get_coll(alias, model).update(spec, up_doc, **kwargs)
 
     @classmethod
     def remove(cls, alias, model, spec, **kwargs):
         kwargs.setdefault('w', 1)
-        return MongoBit.db[alias][model.coll_name].remove(spec, **kwargs)
+        return MongoBit._get_coll(alias, model).remove(spec, **kwargs)
 
     def __iter__(self):
         return self
@@ -152,8 +154,8 @@ class MongoBit(object):
         return self.model(**self.cursor.next())
 
     def create_index(self, alias, model, index, background=True):
-        MongoBit.db[alias][model.coll_name].ensure_index(index,
-                                                         background=background)
+        MongoBit._get_coll(alias, model).ensure_index(index,
+                                                      background=background)
 
     @property
     def model(self):

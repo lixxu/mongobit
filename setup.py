@@ -19,7 +19,7 @@ setup(
     zip_safe=False,
     platforms='any',
     install_requires=[
-        'pymongo==2.8',
+        'pymongo',
     ],
     classifiers=[
         'Environment :: Web Environment',

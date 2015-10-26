@@ -1,6 +1,6 @@
 """
 MongoBit
--------------
+--------
 
 Simple pymongo orm
 """
@@ -8,7 +8,7 @@ from setuptools import setup
 
 setup(
     name='MongoBit',
-    version='0.2.11',
+    version='0.3.0',
     url='https://github.com/lixxu/mongobit',
     license='BSD',
     author='Lix Xu',

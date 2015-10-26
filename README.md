@@ -2,6 +2,9 @@ mongobit
 ========
 Simple Mongo ORM
 
+## Version 0.3 changes
+add support pymongo >= 3.0
+
 ## Important Notice
 Version 0.2 is <b>not compitable</b> with version 0.1.
 Please update your script before upgrading to 0.2.

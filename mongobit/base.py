@@ -241,7 +241,6 @@ class Model(dict):
         return self.update_doc(**kwargs)
 
     def destroy(self, **kwargs):
-        kwargs.setdefault('w', 1)
         self.remove(**kwargs)
 
     def remove(self, **kwargs):

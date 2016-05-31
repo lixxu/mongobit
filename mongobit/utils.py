@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-#-*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 
 from __future__ import unicode_literals
 import warnings
@@ -8,7 +8,7 @@ from pymongo import ASCENDING as ASC, DESCENDING as DESC
 
 
 def get_value(v, cs=False):
-    '''cs: case sensitive'''
+    """Case sensitive: cs."""
     if v:
         if cs is False:
             if isinstance(v, basestring):

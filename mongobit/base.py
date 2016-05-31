@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-#-*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 
 from __future__ import unicode_literals
 from time import strftime
@@ -22,7 +22,7 @@ class ModelMeta(type):
             if '_id' not in attrs:
                 attrs.update(_id=fields.objectid())
 
-            if attrs.get('use_ts', True):
+            if attrs.get('use_ts', False):
                 if 'created_at' not in attrs:
                     attrs.update(created_at=fields.str())
 
@@ -274,7 +274,7 @@ class Model(dict):
             return MongoBit.find(cls._db_alias, cls, **kwargs)
 
         from flask import request, current_app
-        from flask.ext.paginate import Pagination
+        from flask_paginate import Pagination
         if hasattr(current_app, 'y18n'):
             t = current_app.y18n.t
         else:
@@ -363,7 +363,7 @@ class Model(dict):
         self.check_unique(cs=cs)
 
     def check_unique(self, fields=None, cs=False):
-        '''cs: case sensitive'''
+        """Case sensitive: cs."""
         cls = self.__class__
         if fields is None:
             fields = cls._unique_fields

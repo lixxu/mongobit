@@ -2,8 +2,9 @@
 # -*- coding: utf-8 -*-
 
 from __future__ import unicode_literals
-import warnings
 import re
+import warnings
+import six
 from pymongo import ASCENDING as ASC, DESCENDING as DESC
 
 
@@ -11,12 +12,12 @@ def get_value(v, cs=False):
     """Case sensitive: cs."""
     if v:
         if cs is False:
-            if isinstance(v, basestring):
+            if isinstance(v, six.string_types):
                 vv = re.escape(v)
             else:
                 vv = v
 
-            return re.compile(ur'^{0}$'.format(vv), re.I)
+            return re.compile(r"^{0}$".format(vv), re.I)
 
         return v
 
@@ -26,9 +27,9 @@ def get_value(v, cs=False):
 # for composite field
 # format is: 'field1, field2, field3, ...'
 def get_spec(field, doc, cs=False):
-    if ',' in field:
+    if "," in field:
         spec = dict()
-        for k in field.split(','):
+        for k in field.split(","):
             k = k.strip()
             v = get_value(doc[k], cs=cs)
             if v:
@@ -47,13 +48,13 @@ def get_sort(sort):
         return sort
 
     lsts = []
-    for items in sort.split(';'):
+    for items in sort.split(";"):
         lst = []
-        for item in items.strip().split(','):
+        for item in items.strip().split(","):
             item = item.strip()
-            if ' ' in item:
-                field, _sort = item.split(' ')[:2]
-                lst.append((field, DESC if 'desc' in _sort.lower() else ASC))
+            if " " in item:
+                field, _sort = item.split(" ")[:2]
+                lst.append((field, DESC if "desc" in _sort.lower() else ASC))
             else:
                 lst.append((item, ASC))
 
@@ -64,6 +65,7 @@ def get_sort(sort):
 
 
 def safe_deprecation(kwargs):
-    if 'safe' in kwargs:
-        warnings.warn('safe is deprecated, please use w instead',
-                      DeprecationWarning)
+    if "safe" in kwargs:
+        warnings.warn(
+            "safe is deprecated, please use w instead", DeprecationWarning
+        )

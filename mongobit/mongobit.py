@@ -1,13 +1,14 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import pymongo
-from pymongo import MongoClient
 from bson.objectid import ObjectId
 from bson.errors import InvalidId
-from utils import get_sort
+from mongobit.utils import get_sort
+import pymongo
+from pymongo import MongoClient
+import six
 
-PM3 = pymongo.version >= '3.0'
+PM3 = pymongo.version >= "3.0"
 
 
 class MongoBit(object):
@@ -22,19 +23,25 @@ class MongoBit(object):
         self.connect(config)
 
     def connect(self, config={}):
-        host = config.get('DB_HOST', 'localhost')
-        port = config.get('DB_PORT', 27017)
-        assert 'DB_NAME' in config
-        database = config['DB_NAME']
-        conn = MongoClient(host, port)
+        host = config.get("DB_HOST", "localhost")
+        port = config.get("DB_PORT", 27017)
+        assert "DB_NAME" in config
+        database = config["DB_NAME"]
+        try:
+            conn = MongoClient(
+                host, port, connect=config.get("connect", False)
+            )
+        except Exception:
+            conn = MongoClient(host, port)
+
         db = conn[database]
-        is_auth = config.get('DB_AUTH', False)
+        is_auth = config.get("DB_AUTH", False)
         if is_auth:
-            user = config.get('DB_USER')
-            passwd = config.get('DB_PASS')
+            user = config.get("DB_USER")
+            passwd = config.get("DB_PASS")
             db.authenticate(user, passwd)
 
-        self.alias = config.get('alias', 'default')
+        self.alias = config.get("alias", "default")
         MongoBit.conn[self.alias] = conn
         MongoBit.db[self.alias] = db
 
@@ -65,7 +72,7 @@ class MongoBit(object):
         if PM3:
             return coll.count(spec)
 
-        return coll.find(spec, fields=['_id']).count()
+        return coll.find(spec, fields=["_id"]).count()
 
     @classmethod
     def distinct(cls, alias, model, field, spec=None):
@@ -80,13 +87,13 @@ class MongoBit(object):
 
     @classmethod
     def find_one(cls, alias, model, id=None, **kwargs):
-        if 'spec' in kwargs or 'filter' in kwargs:
-            spec = kwargs.get('spec')
+        if "spec" in kwargs or "filter" in kwargs:
+            spec = kwargs.get("spec")
             if not spec:
-                spec = kwargs.get('filter')
+                spec = kwargs.get("filter")
 
         else:
-            if isinstance(id, basestring):
+            if isinstance(id, six.string_types):
                 try:
                     id = ObjectId(id)
                 except InvalidId:
@@ -94,12 +101,12 @@ class MongoBit(object):
 
             spec = dict(_id=id)
 
-        fields = kwargs.get('fields')
+        fields = kwargs.get("fields")
         if not fields:
-            fields = kwargs.get('projection')
+            fields = kwargs.get("projection")
 
-        sort = get_sort(kwargs.get('sort'))
-        skip = kwargs.get('skip', 0)
+        sort = get_sort(kwargs.get("sort"))
+        skip = kwargs.get("skip", 0)
         kargs = dict(sort=sort, skip=skip)
         if fields:
             if PM3:
@@ -115,18 +122,18 @@ class MongoBit(object):
         obj = cls()
         obj.alias = alias
         obj.__model = model
-        spec = kwargs.get('spec') or None
+        spec = kwargs.get("spec") or None
         if not spec:
-            spec = kwargs.get('filter') or None
+            spec = kwargs.get("filter") or None
 
-        fields = kwargs.get('fields') or None
+        fields = kwargs.get("fields") or None
         if not fields:
-            fields = kwargs.get('projection') or None
+            fields = kwargs.get("projection") or None
 
-        sort = get_sort(kwargs.get('sort'))
-        limit = kwargs.get('limit', 0)
-        skip = kwargs.get('skip', 0)
-        hint = kwargs.get('hint')
+        sort = get_sort(kwargs.get("sort"))
+        limit = kwargs.get("limit", 0)
+        skip = kwargs.get("skip", 0)
+        hint = kwargs.get("hint")
         coll_ = MongoBit._get_coll(alias, model)
         kargs = dict(sort=sort, limit=limit, skip=skip)
         if fields:
@@ -149,17 +156,18 @@ class MongoBit(object):
         if PM3:
             return coll.insert_one(doc).inserted_id
 
-        kwargs.setdefault('w', 1)
+        kwargs.setdefault("w", 1)
         return coll.insert(doc, **kwargs)
 
     @classmethod
     def update(cls, alias, model, spec, up_doc, **kwargs):
         coll = MongoBit._get_coll(alias, model)
         if PM3:
-            return coll.update_one(spec, up_doc,
-                                   upsert=kwargs.get('upsert', False))
+            return coll.update_one(
+                spec, up_doc, upsert=kwargs.get("upsert", False)
+            )
 
-        kwargs.setdefault('w', 1)
+        kwargs.setdefault("w", 1)
         return coll.update(spec, up_doc, **kwargs)
 
     @classmethod
@@ -168,7 +176,7 @@ class MongoBit(object):
         if PM3:
             return coll.delete_one(spec)
 
-        kwargs.setdefault('w', 1)
+        kwargs.setdefault("w", 1)
         return coll.remove(spec, **kwargs)
 
     def __iter__(self):
@@ -182,8 +190,9 @@ class MongoBit(object):
         return self.model(**self.cursor.next())
 
     def create_index(self, alias, model, index, background=True):
-        MongoBit._get_coll(alias, model).create_index(index,
-                                                      background=background)
+        MongoBit._get_coll(alias, model).create_index(
+            index, background=background
+        )
 
     @property
     def model(self):

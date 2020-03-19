@@ -3,70 +3,72 @@
 
 from __future__ import unicode_literals
 from time import strftime
+
+import six
 from bson.objectid import ObjectId
 
 from fields import fields, BaseField
 from utils import get_spec, get_sort
 from mongobit import MongoBit
 
-time_fmt = '%Y-%m-%d %H:%M:%S'
+time_fmt = "%Y-%m-%d %H:%M:%S"
 
 
 class ModelMeta(type):
     def __new__(cls, name, bases, attrs):
-        if name not in ('Model', '_Model'):
+        if name not in ("Model", "_Model"):
             # generate the default table name
-            if 'coll_name' not in attrs:
-                attrs.update(coll_name='{}s'.format(name.lower()))
+            if "coll_name" not in attrs:
+                attrs.update(coll_name="{}s".format(name.lower()))
 
-            if '_id' not in attrs:
+            if "_id" not in attrs:
                 attrs.update(_id=fields.objectid())
 
-            if attrs.get('use_ts', False):
-                if 'created_at' not in attrs:
+            if attrs.get("use_ts", False):
+                if "created_at" not in attrs:
                     attrs.update(created_at=fields.str())
 
-                if 'updated_at' not in attrs:
+                if "updated_at" not in attrs:
                     attrs.update(updated_at=fields.str())
 
             attrs.update(_db_fields=dict())
             for k, v in attrs.iteritems():
                 if isinstance(v, BaseField):
-                    attrs['_db_fields'][k] = v
+                    attrs["_db_fields"][k] = v
                     v.name = k
 
             # generates the unique fields
             attrs.update(_unique_fields=list(), _index_fields=list())
-            if 'created_at' in attrs:
-                attrs['_index_fields'].append(get_sort('created_at'))
+            if "created_at" in attrs:
+                attrs["_index_fields"].append(get_sort("created_at"))
 
-            if 'updated_at' in attrs:
-                attrs['_index_fields'].append(get_sort('updated_at desc'))
+            if "updated_at" in attrs:
+                attrs["_index_fields"].append(get_sort("updated_at desc"))
 
-            for k, v in attrs['_db_fields'].iteritems():
-                if 'unique' in v.validators:
-                    uk = v.validators['unique']
+            for k, v in attrs["_db_fields"].iteritems():
+                if "unique" in v.validators:
+                    uk = v.validators["unique"]
                     if uk is True or uk is False:
                         ukey = k
                     else:
                         ukey = uk
 
-                    attrs['_unique_fields'].append(ukey)
+                    attrs["_unique_fields"].append(ukey)
 
-                if 'index' in v.validators:
-                    _idx = v.validators['index']
+                if "index" in v.validators:
+                    _idx = v.validators["index"]
                     if _idx is True:
-                        idx = get_sort('{0} {1}'.format(k, _idx))
-                    elif _idx.lower() in ('asc', 'desc'):
-                        idx = get_sort('{0} {1}'.format(k, _idx))
+                        idx = get_sort("{0} {1}".format(k, _idx))
+                    elif _idx.lower() in ("asc", "desc"):
+                        idx = get_sort("{0} {1}".format(k, _idx))
                     else:
                         idx = get_sort(_idx)
 
                     if idx:
                         if isinstance(idx[0], list):
-                            attrs['_index_fields'].extend(idx)
+                            attrs["_index_fields"].extend(idx)
                         else:
-                            attrs['_index_fields'].append(idx)
+                            attrs["_index_fields"].append(idx)
 
         return type.__new__(cls, name, bases, attrs)
 
@@ -75,10 +77,10 @@ class Model(dict):
     __metaclass__ = ModelMeta
 
     def __init__(self, **kwargs):
-        if '_id' not in kwargs:
+        if "_id" not in kwargs:
             self._is_new = True
             self._id = ObjectId()
-            if hasattr(self, 'created_at'):
+            if hasattr(self, "created_at"):
                 self.created_at = strftime(time_fmt)
 
         else:
@@ -109,12 +111,13 @@ class Model(dict):
         return dict((k, getattr(self, k)) for k in self.__class__._db_fields)
 
     def __str__(self):
-        return unicode(self.dict)
+        return six.text_type(self.dict)
 
     def __repr__(self):
         kls = self.__class__
-        return '<{}.{} object at {}>'.format(kls.__module__, kls.__name__,
-                                             id(self))
+        return "<{}.{} object at {}>".format(
+            kls.__module__, kls.__name__, id(self)
+        )
 
     def safe_get(self, k, default=None):
         return self.get(k, default)
@@ -135,16 +138,16 @@ class Model(dict):
         return dict((k, getattr(self, k)) for k in cls._db_fields)
 
     def get_update_doc(self, **kwargs):
-        set_doc = kwargs.pop('set_doc', None)
-        unset_doc = kwargs.pop('unset_doc', None)
-        push_doc = kwargs.pop('push_doc', None)
-        pull_doc = kwargs.pop('pull_doc', None)
-        pull_all_doc = kwargs.pop('pull_all_doc', None)
-        pop_doc = kwargs.pop('pop_doc', None)
-        inc_doc = kwargs.pop('inc_doc', None)
-        ats_doc = kwargs.pop('add_to_set_doc', None)
+        set_doc = kwargs.pop("set_doc", None)
+        unset_doc = kwargs.pop("unset_doc", None)
+        push_doc = kwargs.pop("push_doc", None)
+        pull_doc = kwargs.pop("pull_doc", None)
+        pull_all_doc = kwargs.pop("pull_all_doc", None)
+        pop_doc = kwargs.pop("pop_doc", None)
+        inc_doc = kwargs.pop("inc_doc", None)
+        ats_doc = kwargs.pop("add_to_set_doc", None)
         if not ats_doc:
-            ats_doc = kwargs.pop('addToSet', None)
+            ats_doc = kwargs.pop("addToSet", None)
 
         up_doc = dict()
         if set_doc:
@@ -155,34 +158,34 @@ class Model(dict):
                     _set_doc.pop(k)
 
             if _set_doc:
-                up_doc['$set'] = _set_doc
+                up_doc["$set"] = _set_doc
 
         if unset_doc:
-            up_doc['$unset'] = unset_doc
+            up_doc["$unset"] = unset_doc
 
         if push_doc:
-            up_doc['$push'] = push_doc
+            up_doc["$push"] = push_doc
 
         if pull_doc:
-            up_doc['$pull'] = pull_doc
+            up_doc["$pull"] = pull_doc
 
         if pull_all_doc:
-            up_doc['$pullAll'] = pull_all_doc
+            up_doc["$pullAll"] = pull_all_doc
 
         if pop_doc:
-            up_doc['$pop'] = pop_doc
+            up_doc["$pop"] = pop_doc
 
         if inc_doc:
-            up_doc['$inc'] = inc_doc
+            up_doc["$inc"] = inc_doc
 
         if ats_doc:
-            up_doc['$addToSet'] = ats_doc
+            up_doc["$addToSet"] = ats_doc
 
         return up_doc
 
     def pre_action(self, **kwargs):
-        skip = kwargs.pop('skip', False)
-        update_ts = kwargs.pop('update_ts', True)
+        skip = kwargs.pop("skip", False)
+        update_ts = kwargs.pop("update_ts", True)
         if skip is True:
             self._errors = {}
         else:
@@ -191,48 +194,50 @@ class Model(dict):
         return skip, update_ts, self.is_valid
 
     def insert_doc(self, **kwargs):
-        kwargs.setdefault('w', 1)
+        kwargs.setdefault("w", 1)
         skip, update_ts, is_valid = self.pre_action(**kwargs)
         if not is_valid:
             return
 
-        if 'updated_at' in self.__class__._db_fields:
+        if "updated_at" in self.__class__._db_fields:
             if update_ts is not False:
                 self.update(updated_at=strftime(time_fmt))
 
-        return MongoBit.insert(alias=self.__class__._db_alias,
-                               model=self.__class__,
-                               doc=self.get_clear_fields(),
-                               **kwargs
-                               )
+        return MongoBit.insert(
+            alias=self.__class__._db_alias,
+            model=self.__class__,
+            doc=self.get_clear_fields(),
+            **kwargs
+        )
 
     def save_doc(self, **kwargs):
         return self.insert_doc(**kwargs)
 
     def update_doc(self, **kwargs):
-        kwargs.setdefault('w', 1)
+        kwargs.setdefault("w", 1)
         up_doc = self.get_update_doc(**kwargs)
-        if '$set' in up_doc:
-            self.update(up_doc['$set'])
+        if "$set" in up_doc:
+            self.update(up_doc["$set"])
 
         skip, update_ts, is_valid = self.pre_action(**kwargs)
         if not is_valid:
             return
 
         if up_doc:
-            if 'updated_at' in self.__class__._db_fields:
+            if "updated_at" in self.__class__._db_fields:
                 if update_ts is not False:
-                    if '$set' not in up_doc:
-                        up_doc['$set'] = dict(updated_at=strftime(time_fmt))
+                    if "$set" not in up_doc:
+                        up_doc["$set"] = dict(updated_at=strftime(time_fmt))
                     else:
-                        up_doc['$set'].update(updated_at=strftime(time_fmt))
+                        up_doc["$set"].update(updated_at=strftime(time_fmt))
 
-            return MongoBit.update(alias=self.__class__._db_alias,
-                                   model=self.__class__,
-                                   spec=dict(_id=self.id),
-                                   up_doc=up_doc,
-                                   **kwargs
-                                   )
+            return MongoBit.update(
+                alias=self.__class__._db_alias,
+                model=self.__class__,
+                spec=dict(_id=self.id),
+                up_doc=up_doc,
+                **kwargs
+            )
 
     def save(self, **kwargs):
         if self._is_new:
@@ -244,12 +249,13 @@ class Model(dict):
         self.remove(**kwargs)
 
     def remove(self, **kwargs):
-        kwargs.setdefault('w', 1)
-        return MongoBit.remove(alias=self.__class__._db_alias,
-                               model=self.__class__,
-                               spec=dict(_id=self.id),
-                               **kwargs
-                               )
+        kwargs.setdefault("w", 1)
+        return MongoBit.remove(
+            alias=self.__class__._db_alias,
+            model=self.__class__,
+            spec=dict(_id=self.id),
+            **kwargs
+        )
 
     @classmethod
     def total_count(cls):
@@ -269,76 +275,89 @@ class Model(dict):
 
     @classmethod
     def find(cls, **kwargs):
-        paginate = kwargs.get('paginate', False)
+        paginate = kwargs.get("paginate", False)
         if paginate is False:
             return MongoBit.find(cls._db_alias, cls, **kwargs)
 
         from flask import request, current_app
         from flask_paginate import Pagination
-        if hasattr(current_app, 'y18n'):
+
+        if hasattr(current_app, "y18n"):
             t = current_app.y18n.t
         else:
             t = None
 
-        page1 = int(kwargs.get('page', 1))
-        page2 = int(request.view_args.get('page', 1))
-        page3 = int(request.args.get('page', 1))
+        page1 = int(kwargs.get("page", 1))
+        page2 = int(request.view_args.get("page", 1))
+        page3 = int(request.args.get("page", 1))
         page = max((page1, page2, page3))
-        if 'per_page' in kwargs:
-            per_page = kwargs['per_page']
-        elif 'PER_PAGE' in current_app.config:
-            per_page = current_app.config['PER_PAGE']
+        if "per_page" in kwargs:
+            per_page = kwargs["per_page"]
+        elif "PER_PAGE" in current_app.config:
+            per_page = current_app.config["PER_PAGE"]
         else:
             per_page = 10
 
-        if 'link_size' in kwargs:
-            link_size = kwargs['link_size']
-        elif 'LINK_SIZE' in current_app.config:
-            link_size = current_app.config['LINK_SIZE']
+        if "link_size" in kwargs:
+            link_size = kwargs["link_size"]
+        elif "LINK_SIZE" in current_app.config:
+            link_size = current_app.config["LINK_SIZE"]
         else:
-            link_size = ''
+            link_size = ""
 
-        if 'link_align' in kwargs:
-            alignment = kwargs['link_align']
-        elif 'LINK_ALIGN' in current_app.config:
-            alignment = current_app.config['LINK_ALIGN']
+        if "link_align" in kwargs:
+            alignment = kwargs["link_align"]
+        elif "LINK_ALIGN" in current_app.config:
+            alignment = current_app.config["LINK_ALIGN"]
         else:
-            alignment = ''
+            alignment = ""
 
-        bs_version = kwargs.get('bs_version') or \
-            current_app.config.get('BS_VERSION') or 2
-        css_framework = kwargs.get('css_framework') or \
-            current_app.config.get('CSS_FRAMEWORK') or 'bootstrap'
+        bs_version = (
+            kwargs.get("bs_version")
+            or current_app.config.get("BS_VERSION")
+            or 2
+        )
+        css_framework = (
+            kwargs.get("css_framework")
+            or current_app.config.get("CSS_FRAMEWORK")
+            or "bootstrap"
+        )
 
         skip = (page - 1) * per_page
         kwargs.update(limit=per_page, skip=skip)
         objs = MongoBit.find(cls._db_alias, cls, **kwargs)
 
-        total = kwargs.get('total', 'all')
-        if total == 'all':
+        total = kwargs.get("total", "all")
+        if total == "all":
             total = cls.total_count()
-        elif total == 'docs':
+        elif total == "docs":
             total = objs.count
 
-        args = dict(page=page,
-                    per_page=per_page,
-                    inner_window=kwargs.get('inner_window', 2),
-                    outer_window=kwargs.get('outer_window', 1),
-                    prev_label=kwargs.get('prev_label'),
-                    next_label=kwargs.get('next_label'),
-                    search=kwargs.get('search', False),
-                    total=total,
-                    display_msg=kwargs.get('display_msg'),
-                    search_msg=kwargs.get('search_msg'),
-                    record_name=kwargs.get('record_name'),
-                    link_size=link_size,
-                    alignment=alignment,
-                    bs_version=bs_version,
-                    css_framework=css_framework,
-                    )
+        args = dict(
+            page=page,
+            per_page=per_page,
+            inner_window=kwargs.get("inner_window", 2),
+            outer_window=kwargs.get("outer_window", 1),
+            prev_label=kwargs.get("prev_label"),
+            next_label=kwargs.get("next_label"),
+            search=kwargs.get("search", False),
+            total=total,
+            display_msg=kwargs.get("display_msg"),
+            search_msg=kwargs.get("search_msg"),
+            record_name=kwargs.get("record_name"),
+            link_size=link_size,
+            alignment=alignment,
+            bs_version=bs_version,
+            css_framework=css_framework,
+        )
         if t:
-            for k in ('display_msg', 'search_msg', 'prev_label', 'next_label',
-                      'record_name'):
+            for k in (
+                "display_msg",
+                "search_msg",
+                "prev_label",
+                "next_label",
+                "record_name",
+            ):
                 if not args[k]:
                     args[k] = t(k)
 
@@ -348,7 +367,7 @@ class Model(dict):
 
     @property
     def is_valid(self):
-        if hasattr(self, '_errors'):
+        if hasattr(self, "_errors"):
             for v in self._errors.values():
                 if len(v) != 0:
                     return False
@@ -372,10 +391,10 @@ class Model(dict):
         for field in fields:
             spec = self.get_spec(field, self, cs=cs)
             if spec and update:
-                spec.update(_id={'$ne': self.id})
+                spec.update(_id={"$ne": self.id})
 
             if spec and cls.find_one(spec=spec):
-                self._errors[field] = 'is already taken'
+                self._errors[field] = "is already taken"
 
     @property
     def get_spec(self):

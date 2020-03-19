@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from .base import Model
-from .fields import fields
-from .mongobit import MongoBit
+from mongobit.base import Model
+from mongobit.fields import fields
+from mongobit.mongobit import MongoBit

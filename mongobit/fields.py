@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import types
 import datetime
+import types
 from bson.objectid import ObjectId
+import six
 
 
 class BaseField(object):
@@ -11,49 +12,57 @@ class BaseField(object):
 
     def __init__(self, **kwargs):
         self.validators = {}
-        self.default = kwargs.get('default', self.__class__.default)
+        self.default = kwargs.get("default", self.__class__.default)
         self.get_validators(kwargs)
         cls = self.__class__
-        if not hasattr(cls, 'type'):
-            tp = cls.__name__.replace('Field', 'Type')
-            if tp == 'AnyType':
+        if not hasattr(cls, "type"):
+            tp = cls.__name__.replace("Field", "Type")
+            if tp == "AnyType":
                 cls.type = None
-            elif tp == 'StringType':
+            elif tp == "StringType":
                 cls.type = str
-            elif tp == 'UnicodeType':
-                cls.type = unicode
-            elif tp == 'BoolType':
+            elif tp == "UnicodeType":
+                cls.type = six.text_type
+            elif tp == "BoolType":
                 cls.type = bool
-            elif tp == 'DateType':
+            elif tp == "DateType":
                 cls.type = datetime.date
-            elif tp == 'DateTimeType':
+            elif tp == "DateTimeType":
                 cls.type = datetime.datetime
-            elif tp == 'ObjectIdType':
+            elif tp == "ObjectIdType":
                 cls.type = ObjectId
             else:
-                cls.type = getattr(types, tp)
+                try:
+                    cls.type = getattr(types, tp)
+                except AttributeError:
+                    cls.type = types.new_class(tp)
 
     def get_validators(self, kwargs):
-        for k in ('required', 'null', 'max_size',
-                  'min_size', 'unique', 'index',
-                  ):
+        for k in (
+            "required",
+            "null",
+            "max_size",
+            "min_size",
+            "unique",
+            "index",
+        ):
             if k in kwargs:
                 self.validators[k] = kwargs[k]
 
     def validates(self, obj, val):
         errors = obj._errors[self.name]
-        if self.validators.get('required', False) and not val:
+        if self.validators.get("required", False) and not val:
             errors.append("can't be blank")
 
-        if 'min_size' in self.validators:
-            min_size = self.validators['min_size']
+        if "min_size" in self.validators:
+            min_size = self.validators["min_size"]
             if min_size and len(val) < min_size:
-                errors.append('{0} chars at least'.format(min_size))
+                errors.append("{0} chars at least".format(min_size))
 
-        if 'max_size' in self.validators:
-            max_size = self.validators['max_size']
+        if "max_size" in self.validators:
+            max_size = self.validators["max_size"]
             if max_size and len(val) > max_size:
-                errors.append('{0} chars at most'.format(max_size))
+                errors.append("{0} chars at most".format(max_size))
 
         return len(errors) == 0
 
@@ -67,26 +76,27 @@ class BaseField(object):
         if self.default is not None:
             return self.default
 
-        if self.__class__.__name__.startswith(('Str', 'Unicode', 'List',
-                                              'Tuple', 'Dict')):
+        if self.__class__.__name__.startswith(
+            ("Str", "Unicode", "List", "Tuple", "Dict")
+        ):
             return self.__class__.type()
 
         return None
 
     def __set__(self, obj, value):
-        if not hasattr(obj, '_errors'):
+        if not hasattr(obj, "_errors"):
             obj._errors = dict()
 
         errors = obj._errors[self.name] = []
         if self.type is None:
             obj.__dict__[self.name] = value
-        elif self.validators.get('null', False) and value is None:
+        elif self.validators.get("null", False) and value is None:
             obj.__dict__[self.name] = None
         else:
-            if self.type in (str, unicode):
-                tp = basestring
-            elif self.type in (int, long):
-                tp = (int, long)
+            if self.type in six.string_types:
+                tp = six.string_types
+            elif self.type in six.integer_types:
+                tp = six.integer_types
             else:
                 tp = self.type
 
@@ -107,6 +117,7 @@ class FloatField(BaseField):
 
 class StringField(BaseField):
     pass
+
 
 TextField = StringField
 
@@ -149,6 +160,7 @@ class AnyField(BaseField):
 
 class Fields(object):
     pass
+
 
 fields = Fields()
 fields.str = StringField

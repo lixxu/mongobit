@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import pymongo
+import six
+from pymongo import MongoClient
 from bson.objectid import ObjectId
 from bson.errors import InvalidId
-from mongobit.utils import get_sort
-import pymongo
-from pymongo import MongoClient
-import six
+from .utils import get_sort
 
 PM3 = pymongo.version >= "3.0"
 
@@ -27,13 +27,7 @@ class MongoBit(object):
         port = config.get("DB_PORT", 27017)
         assert "DB_NAME" in config
         database = config["DB_NAME"]
-        try:
-            conn = MongoClient(
-                host, port, connect=config.get("connect", False)
-            )
-        except Exception:
-            conn = MongoClient(host, port)
-
+        conn = MongoClient(host, port)
         db = conn[database]
         is_auth = config.get("DB_AUTH", False)
         if is_auth:
@@ -60,19 +54,19 @@ class MongoBit(object):
 
     @staticmethod
     def _get_coll(alias, model):
-        return MongoBit.db[alias][model.coll_name]
+        return MongoBit.db[alias][model.__collection__]
 
     @classmethod
     def get_total_count(cls, alias, model):
         return MongoBit._get_coll(alias, model).count()
 
     @classmethod
-    def get_count(cls, alias, model, spec=None):
+    def get_count(cls, alias, model, spec=None, **kwargs):
         coll = MongoBit._get_coll(alias, model)
-        if PM3:
-            return coll.count(spec)
-
-        return coll.find(spec, fields=["_id"]).count()
+        try:
+            return coll.count_documents(spec, **kwargs)
+        except Exception:
+            return coll.find(spec, fields=["_id"]).count()
 
     @classmethod
     def distinct(cls, alias, model, field, spec=None):
@@ -188,6 +182,9 @@ class MongoBit(object):
 
         self.__count -= 1
         return self.model(**self.cursor.next())
+
+    def __next__(self):
+        return self.next()
 
     def create_index(self, alias, model, index, background=True):
         MongoBit._get_coll(alias, model).create_index(

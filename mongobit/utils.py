@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 
 from __future__ import unicode_literals
-import re
 import warnings
+import re
 import six
 from pymongo import ASCENDING as ASC, DESCENDING as DESC
 
@@ -17,7 +17,7 @@ def get_value(v, cs=False):
             else:
                 vv = v
 
-            return re.compile(r"^{0}$".format(vv), re.I)
+            return re.compile(six.u(r"^{0}$".format(vv)), re.I)
 
         return v
 

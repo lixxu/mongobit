@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import datetime
 import types
-from bson.objectid import ObjectId
+import datetime
 import six
+from bson.objectid import ObjectId
 
 
 class BaseField(object):
@@ -32,10 +32,12 @@ class BaseField(object):
             elif tp == "ObjectIdType":
                 cls.type = ObjectId
             else:
-                try:
+                if six.PY2:
                     cls.type = getattr(types, tp)
-                except AttributeError:
-                    cls.type = types.new_class(tp)
+                else:
+                    import builtins
+
+                    cls.type = getattr(builtins, tp[:-4].lower())
 
     def get_validators(self, kwargs):
         for k in (

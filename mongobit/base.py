@@ -7,19 +7,22 @@ from time import strftime
 import six
 from bson.objectid import ObjectId
 
-from fields import fields, BaseField
-from utils import get_spec, get_sort
-from mongobit import MongoBit
+from .fields import fields, BaseField
+from .utils import get_spec, get_sort
+from .mongobit import MongoBit
 
-time_fmt = "%Y-%m-%d %H:%M:%S"
+TIME_FMT = "%Y-%m-%d %H:%M:%S"
 
 
 class ModelMeta(type):
     def __new__(cls, name, bases, attrs):
         if name not in ("Model", "_Model"):
             # generate the default table name
-            if "coll_name" not in attrs:
-                attrs.update(coll_name="{}s".format(name.lower()))
+            if "__collection__" not in attrs:
+                coll_name = attrs.pop("coll_name", None) or "{}s".format(
+                    name.lower()
+                )
+                attrs["__collection__"] = coll_name
 
             if "_id" not in attrs:
                 attrs.update(_id=fields.objectid())
@@ -31,8 +34,8 @@ class ModelMeta(type):
                 if "updated_at" not in attrs:
                     attrs.update(updated_at=fields.str())
 
-            attrs.update(_db_fields=dict())
-            for k, v in attrs.iteritems():
+            attrs.update(_db_fields={})
+            for k, v in six.iteritems(attrs):
                 if isinstance(v, BaseField):
                     attrs["_db_fields"][k] = v
                     v.name = k
@@ -45,7 +48,7 @@ class ModelMeta(type):
             if "updated_at" in attrs:
                 attrs["_index_fields"].append(get_sort("updated_at desc"))
 
-            for k, v in attrs["_db_fields"].iteritems():
+            for k, v in six.iteritems(attrs["_db_fields"]):
                 if "unique" in v.validators:
                     uk = v.validators["unique"]
                     if uk is True or uk is False:
@@ -73,15 +76,14 @@ class ModelMeta(type):
         return type.__new__(cls, name, bases, attrs)
 
 
+@six.add_metaclass(ModelMeta)
 class Model(dict):
-    __metaclass__ = ModelMeta
-
     def __init__(self, **kwargs):
         if "_id" not in kwargs:
             self._is_new = True
             self._id = ObjectId()
             if hasattr(self, "created_at"):
-                self.created_at = strftime(time_fmt)
+                self.created_at = strftime(TIME_FMT)
 
         else:
             self._is_new = False
@@ -98,6 +100,9 @@ class Model(dict):
     def __nonzero__(self):
         return True
 
+    def __bool__(self):
+        return True
+
     def update(self, dct=None, **kwargs):
         if isinstance(dct, Model):
             [setattr(self, k, v) for k, v in dct.dict.items()]
@@ -108,10 +113,10 @@ class Model(dict):
 
     @property
     def dict(self):
-        return dict((k, getattr(self, k)) for k in self.__class__._db_fields)
+        return {k: getattr(self, k) for k in self.__class__._db_fields}
 
     def __str__(self):
-        return six.text_type(self.dict)
+        return "{}".format(self.dict)
 
     def __repr__(self):
         kls = self.__class__
@@ -133,9 +138,9 @@ class Model(dict):
     def get_clear_fields(self, doc=None):
         cls = self.__class__
         if doc:
-            return dict((k, doc[k]) for k in doc if k in cls._db_fields)
+            return {k: doc[k] for k in doc if k in cls._db_fields}
 
-        return dict((k, getattr(self, k)) for k in cls._db_fields)
+        return {k: getattr(self, k) for k in cls._db_fields}
 
     def get_update_doc(self, **kwargs):
         set_doc = kwargs.pop("set_doc", None)
@@ -149,11 +154,11 @@ class Model(dict):
         if not ats_doc:
             ats_doc = kwargs.pop("addToSet", None)
 
-        up_doc = dict()
+        up_doc = {}
         if set_doc:
             _set_doc = set_doc.copy()
             fields = self.__class__._db_fields
-            for k in _set_doc.keys():
+            for k in list(_set_doc.keys()):
                 if k in fields and _set_doc[k] == getattr(self, k):
                     _set_doc.pop(k)
 
@@ -201,7 +206,7 @@ class Model(dict):
 
         if "updated_at" in self.__class__._db_fields:
             if update_ts is not False:
-                self.update(updated_at=strftime(time_fmt))
+                self.update(updated_at=strftime(TIME_FMT))
 
         return MongoBit.insert(
             alias=self.__class__._db_alias,
@@ -227,9 +232,9 @@ class Model(dict):
             if "updated_at" in self.__class__._db_fields:
                 if update_ts is not False:
                     if "$set" not in up_doc:
-                        up_doc["$set"] = dict(updated_at=strftime(time_fmt))
+                        up_doc["$set"] = dict(updated_at=strftime(TIME_FMT))
                     else:
-                        up_doc["$set"].update(updated_at=strftime(time_fmt))
+                        up_doc["$set"].update(updated_at=strftime(TIME_FMT))
 
             return MongoBit.update(
                 alias=self.__class__._db_alias,

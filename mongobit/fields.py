@@ -95,7 +95,7 @@ class BaseField(object):
         elif self.validators.get("null", False) and value is None:
             obj.__dict__[self.name] = None
         else:
-            if self.type in six.string_types:
+            if self.type.__name__ in ("str", "unicode"):
                 tp = six.string_types
             elif self.type in six.integer_types:
                 tp = six.integer_types

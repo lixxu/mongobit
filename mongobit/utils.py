@@ -28,7 +28,7 @@ def get_value(v, cs=False):
 # format is: 'field1, field2, field3, ...'
 def get_spec(field, doc, cs=False):
     if "," in field:
-        spec = dict()
+        spec = {}
         for k in field.split(","):
             k = k.strip()
             v = get_value(doc[k], cs=cs)

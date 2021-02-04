@@ -17,7 +17,7 @@ def get_value(v, cs=False):
             else:
                 vv = v
 
-            return re.compile(six.u(r"^{0}$".format(vv)), re.I)
+            return re.compile(r"^{0}$".format(vv), re.I)
 
         return v
 

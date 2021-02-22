@@ -4,11 +4,23 @@ MongoBit
 
 Simple pymongo orm
 """
+import io
+import os.path
 from setuptools import setup
+
+work_dir = os.path.dirname(os.path.abspath(__file__))
+fp = os.path.join(work_dir, "mongobit/__init__.py")
+
+version = ""
+with io.open(fp, encoding="utf-8") as f:
+    for line in f:
+        if line.startswith("__version__ = "):
+            version = line.split("=")[-1].strip().replace("'", "")
+            break
 
 setup(
     name="MongoBit",
-    version="0.7.2",
+    version=version.replace('"', ""),
     url="https://github.com/lixxu/mongobit",
     license="BSD",
     author="Lix Xu",

@@ -9,6 +9,7 @@ from bson.errors import InvalidId
 from .utils import get_sort
 
 PM3 = pymongo.version >= "3.0"
+PM36 = pymongo.version >= "3.6"
 
 
 class MongoBit(object):
@@ -22,18 +23,20 @@ class MongoBit(object):
     def initialize(self, config):
         self.connect(config)
 
+    @classmethod
+    def _get_params(cls, config={}):
+        keys = ("host", "port", "name", "auth", "user", "pass")
+        prefix = "MONGODB" if config.get("MONGODB_HOST") else "DB"
+        return {k: config.get("{}_{}".format(prefix, k.upper())) for k in keys}
+
     def connect(self, config={}):
-        host = config.get("DB_HOST", "localhost")
-        port = config.get("DB_PORT", 27017)
-        assert "DB_NAME" in config
-        database = config["DB_NAME"]
-        conn = MongoClient(host, port)
-        db = conn[database]
-        is_auth = config.get("DB_AUTH", False)
-        if is_auth:
-            user = config.get("DB_USER")
-            passwd = config.get("DB_PASS")
-            db.authenticate(user, passwd)
+        params = self._get_params(config)
+        assert "name" in params
+
+        conn = MongoClient(params["host"], params["port"], connect=False)
+        db = conn[params["name"]]
+        if params.get("auth"):
+            db.authenticate(params["user"], params["pass"])
 
         self.alias = config.get("alias", "default")
         MongoBit.conn[self.alias] = conn
@@ -41,36 +44,53 @@ class MongoBit(object):
 
     @property
     def database(self):
-        return MongoBit.db[self.alias]
+        return self.__class__.db[self.alias]
 
     @property
     def connection(self):
-        return MongoBit.conn[self.alias]
+        return self.__class__.conn[self.alias]
 
     def close(self):
         self.connection.close()
-        MongoBit.conn.pop(self.alias)
-        MongoBit.db.pop(self.alias)
+        self.__class__.conn.pop(self.alias)
+        self.__class__.db.pop(self.alias)
 
-    @staticmethod
-    def _get_coll(alias, model):
-        return MongoBit.db[alias][model.__collection__]
+    @classmethod
+    def _get_coll(cls, alias, model):
+        return cls.db[alias][model.__collection__]
+
+    @property
+    def model(self):
+        return self.__model
+
+    @property
+    def count(self):
+        return self.__count
+
+    @property
+    def cursor(self):
+        return self.__cursor
 
     @classmethod
     def get_total_count(cls, alias, model):
-        return MongoBit._get_coll(alias, model).count()
+        return cls._get_coll(alias, model).count()
 
     @classmethod
     def get_count(cls, alias, model, spec=None, **kwargs):
-        coll = MongoBit._get_coll(alias, model)
+        coll = cls._get_coll(alias, model)
         try:
             return coll.count_documents(spec, **kwargs)
         except Exception:
             return coll.find(spec, fields=["_id"]).count()
 
     @classmethod
+    def aggregate(cls, alias, model, pipeline, **kwargs):
+        agg = cls._get_coll(alias, model).aggregate(pipeline, **kwargs)
+        return agg["result"] if isinstance(agg, dict) else agg
+
+    @classmethod
     def distinct(cls, alias, model, field, spec=None):
-        coll = MongoBit._get_coll(alias, model)
+        coll = cls._get_coll(alias, model)
         if spec:
             if PM3:
                 return coll.distinct(field, filter=spec)
@@ -108,7 +128,7 @@ class MongoBit(object):
             else:
                 kargs.update(fields=fields)
 
-        doc = MongoBit._get_coll(alias, model).find_one(spec, **kargs)
+        doc = cls._get_coll(alias, model).find_one(spec, **kargs)
         return model(**doc) if doc else None
 
     @classmethod
@@ -128,7 +148,7 @@ class MongoBit(object):
         limit = kwargs.get("limit", 0)
         skip = kwargs.get("skip", 0)
         hint = kwargs.get("hint")
-        coll_ = MongoBit._get_coll(alias, model)
+        coll_ = cls._get_coll(alias, model)
         kargs = dict(sort=sort, limit=limit, skip=skip)
         if fields:
             if PM3:
@@ -146,7 +166,7 @@ class MongoBit(object):
 
     @classmethod
     def insert(cls, alias, model, doc, **kwargs):
-        coll = MongoBit._get_coll(alias, model)
+        coll = cls._get_coll(alias, model)
         if PM3:
             return coll.insert_one(doc).inserted_id
 
@@ -155,7 +175,7 @@ class MongoBit(object):
 
     @classmethod
     def update(cls, alias, model, spec, up_doc, **kwargs):
-        coll = MongoBit._get_coll(alias, model)
+        coll = cls._get_coll(alias, model)
         if PM3:
             return coll.update_one(
                 spec, up_doc, upsert=kwargs.get("upsert", False)
@@ -166,7 +186,7 @@ class MongoBit(object):
 
     @classmethod
     def remove(cls, alias, model, spec, **kwargs):
-        coll = MongoBit._get_coll(alias, model)
+        coll = cls._get_coll(alias, model)
         if PM3:
             return coll.delete_one(spec)
 
@@ -186,19 +206,38 @@ class MongoBit(object):
     def __next__(self):
         return self.next()
 
-    def create_index(self, alias, model, index, background=True):
-        MongoBit._get_coll(alias, model).create_index(
-            index, background=background
-        )
+    @classmethod
+    def create_index(cls, alias, model, index, **kwargs):
+        kwargs.setdefault("background", True)
+        if PM36:
+            kwargs.setdefault("session", None)
 
-    @property
-    def model(self):
-        return self.__model
+        return cls._get_coll(alias, model).create_index(index, **kwargs)
 
-    @property
-    def count(self):
-        return self.__count
+    @classmethod
+    def drop_index(cls, alias, model, index, **kwargs):
+        if PM36:
+            kwargs.setdefault("session", None)
 
-    @property
-    def cursor(self):
-        return self.__cursor
+        return cls._get_coll(alias, model).drop_index(index, **kwargs)
+
+    @classmethod
+    def drop_indexes(cls, alias, model, **kwargs):
+        if PM36:
+            kwargs.setdefault("session", None)
+
+        return cls._get_coll(alias, model).drop_index(**kwargs)
+
+    @classmethod
+    def list_indexes(cls, alias, model, **kwargs):
+        if PM36:
+            kwargs.setdefault("session", None)
+
+        return cls._get_coll(alias, model).list_indexes(**kwargs)
+
+    @classmethod
+    def index_information(cls, alias, model, **kwargs):
+        if PM36:
+            kwargs.setdefault("session", None)
+
+        return cls._get_coll(alias, model).index_information(**kwargs)

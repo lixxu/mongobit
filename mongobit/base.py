@@ -198,9 +198,52 @@ class Model(dict):
 
         return skip, update_ts, self.is_valid
 
+    @property
+    def is_valid(self):
+        if hasattr(self, "_errors"):
+            for v in self._errors.values():
+                if len(v) != 0:
+                    return False
+
+            return True
+
+        # please validate first
+        return False
+
+    def validate(self, cs=False, update=False):
+        self._errors = {}
+        self.check_unique(cs=cs)
+
+    def check_unique(self, fields=None, cs=False):
+        """Case sensitive: cs."""
+        cls = self.__class__
+        if fields is None:
+            fields = cls._unique_fields
+
+        update = not self._is_new
+        for field in fields:
+            spec = self.get_spec(field, self, cs=cs)
+            if spec and update:
+                spec.update(_id={"$ne": self.id})
+
+            if spec and cls.find_one(spec=spec):
+                self._errors[field] = "is already taken"
+
+    @property
+    def get_spec(self):
+        return get_spec
+
+    @property
+    def get_sort(self):
+        return get_sort
+
+    @classmethod
+    def _run(cls, action, *args, **kwargs):
+        return getattr(MongoBit, action)(cls._db_alias, cls, *args, **kwargs)
+
     def insert_doc(self, **kwargs):
         kwargs.setdefault("w", 1)
-        skip, update_ts, is_valid = self.pre_action(**kwargs)
+        _, update_ts, is_valid = self.pre_action(**kwargs)
         if not is_valid:
             return
 
@@ -208,12 +251,7 @@ class Model(dict):
             if update_ts is not False:
                 self.update(updated_at=strftime(TIME_FMT))
 
-        return MongoBit.insert(
-            alias=self.__class__._db_alias,
-            model=self.__class__,
-            doc=self.get_clear_fields(),
-            **kwargs
-        )
+        return self._run("insert", doc=self.get_clear_fields(), **kwargs)
 
     def save_doc(self, **kwargs):
         return self.insert_doc(**kwargs)
@@ -224,7 +262,7 @@ class Model(dict):
         if "$set" in up_doc:
             self.update(up_doc["$set"])
 
-        skip, update_ts, is_valid = self.pre_action(**kwargs)
+        _, update_ts, is_valid = self.pre_action(**kwargs)
         if not is_valid:
             return
 
@@ -236,12 +274,8 @@ class Model(dict):
                     else:
                         up_doc["$set"].update(updated_at=strftime(TIME_FMT))
 
-            return MongoBit.update(
-                alias=self.__class__._db_alias,
-                model=self.__class__,
-                spec=dict(_id=self.id),
-                up_doc=up_doc,
-                **kwargs
+            return self._run(
+                "update", spec=dict(_id=self.id), up_doc=up_doc, **kwargs
             )
 
     def save(self, **kwargs):
@@ -255,34 +289,35 @@ class Model(dict):
 
     def remove(self, **kwargs):
         kwargs.setdefault("w", 1)
-        return MongoBit.remove(
-            alias=self.__class__._db_alias,
-            model=self.__class__,
-            spec=dict(_id=self.id),
-            **kwargs
-        )
+        return self._run("remove", spec=dict(_id=self.id), **kwargs)
 
     @classmethod
     def total_count(cls):
-        return MongoBit.get_total_count(cls._db_alias, cls)
+        return cls._run("get_total_count")
 
     @classmethod
     def get_count(cls, spec=None):
-        return MongoBit.get_count(cls._db_alias, cls, spec)
+        return cls._run("get_count", spec)
 
     @classmethod
     def distinct(cls, field, spec=None):
-        return MongoBit.distinct(cls._db_alias, cls, field, spec=spec)
+        return cls._run("distinct", field, spec=spec)
 
     @classmethod
     def find_one(cls, id=None, **kwargs):
-        return MongoBit.find_one(cls._db_alias, cls, id=id, **kwargs)
+        if isinstance(id, dict):
+            kw = dict(kwargs, id=None, spec=id)
+        else:
+            kw = dict(kwargs, id=id)
+
+        return cls._run("find_one", **kw)
 
     @classmethod
-    def find(cls, **kwargs):
+    def find(cls, spec=None, **kwargs):
         paginate = kwargs.get("paginate", False)
+        kwargs.update(spec=spec)
         if paginate is False:
-            return MongoBit.find(cls._db_alias, cls, **kwargs)
+            return cls._run("find", **kwargs)
 
         from flask import request, current_app
         from flask_paginate import Pagination
@@ -330,7 +365,7 @@ class Model(dict):
 
         skip = (page - 1) * per_page
         kwargs.update(limit=per_page, skip=skip)
-        objs = MongoBit.find(cls._db_alias, cls, **kwargs)
+        objs = cls._run("find", **kwargs)
 
         total = kwargs.get("total", "all")
         if total == "all":
@@ -370,41 +405,10 @@ class Model(dict):
         objs.skip = skip
         return objs
 
-    @property
-    def is_valid(self):
-        if hasattr(self, "_errors"):
-            for v in self._errors.values():
-                if len(v) != 0:
-                    return False
+    @classmethod
+    def aggregate(cls, pipeline, **kwargs):
+        return cls._run("aggregate", pipeline, **kwargs)
 
-            return True
-
-        # please validate first
-        return False
-
-    def validate(self, cs=False, update=False):
-        self._errors = {}
-        self.check_unique(cs=cs)
-
-    def check_unique(self, fields=None, cs=False):
-        """Case sensitive: cs."""
-        cls = self.__class__
-        if fields is None:
-            fields = cls._unique_fields
-
-        update = not self._is_new
-        for field in fields:
-            spec = self.get_spec(field, self, cs=cs)
-            if spec and update:
-                spec.update(_id={"$ne": self.id})
-
-            if spec and cls.find_one(spec=spec):
-                self._errors[field] = "is already taken"
-
-    @property
-    def get_spec(self):
-        return get_spec
-
-    @property
-    def get_sort(self):
-        return get_sort
+    @classmethod
+    def create_index(cls, index, background=True):
+        return cls._run("create_index", index, background=background)

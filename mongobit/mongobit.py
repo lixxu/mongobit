@@ -3,9 +3,10 @@
 
 import pymongo
 import six
-from pymongo import MongoClient
-from bson.objectid import ObjectId
 from bson.errors import InvalidId
+from bson.objectid import ObjectId
+from pymongo import MongoClient
+
 from .utils import get_sort
 
 PM3 = pymongo.version >= "3.0"
@@ -81,6 +82,9 @@ class MongoBit(object):
         try:
             return coll.count_documents(spec, **kwargs)
         except Exception:
+            if PM3:
+                return coll.find(spec, projection=["_id"]).count()
+
             return coll.find(spec, fields=["_id"]).count()
 
     @classmethod

@@ -6,6 +6,7 @@ Simple pymongo orm
 """
 import io
 import os.path
+
 from setuptools import setup
 
 work_dir = os.path.dirname(os.path.abspath(__file__))
@@ -30,7 +31,7 @@ setup(
     packages=["mongobit"],
     zip_safe=False,
     platforms="any",
-    install_requires=["pymongo", "six"],
+    install_requires=["pymongo<4.0", "six"],
     classifiers=[
         "Environment :: Web Environment",
         "Intended Audience :: Developers",

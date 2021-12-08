@@ -2,14 +2,15 @@
 # -*- coding: utf-8 -*-
 
 from __future__ import unicode_literals
+
 from time import strftime
 
 import six
 from bson.objectid import ObjectId
 
-from .fields import fields, BaseField
-from .utils import get_spec, get_sort
+from .fields import BaseField, fields
 from .mongobit import MongoBit
+from .utils import get_sort, get_spec
 
 TIME_FMT = "%Y-%m-%d %H:%M:%S"
 
@@ -319,7 +320,7 @@ class Model(dict):
         if paginate is False:
             return cls._run("find", **kwargs)
 
-        from flask import request, current_app
+        from flask import current_app, request
         from flask_paginate import Pagination
 
         if hasattr(current_app, "y18n"):

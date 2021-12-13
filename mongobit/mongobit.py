@@ -74,7 +74,7 @@ class MongoBit(object):
 
     @classmethod
     def get_total_count(cls, alias, model):
-        return cls._get_coll(alias, model).count()
+        return cls.get_count(alias, model)
 
     @classmethod
     def get_count(cls, alias, model, spec=None, **kwargs):
@@ -165,7 +165,7 @@ class MongoBit(object):
         else:
             obj.__cursor = coll_.find(spec, **kargs)
 
-        obj.__count = obj.__cursor.count()
+        obj.__count = cls.get_count(alias, model, spec)
         return obj
 
     @classmethod
